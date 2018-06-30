@@ -1,3 +1,4 @@
+# 기본 구조는 유지하되 빌더관련만 코드만 남기고 제거한 버전입니다.
 # [knex.js](http://knexjs.org)
 
 [![npm version](http://img.shields.io/npm/v/knex.svg)](https://npmjs.org/package/knex)
