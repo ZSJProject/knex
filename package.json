@@ -55,7 +55,6 @@
     "dev": "rimraf ./lib && babel -w src --out-dir lib --copy-files",
     "lint": "eslint src/**",
     "test": "npm run pre_test && mocha -t 10000 -b -R spec test/index.js",
-    "install": "npm run babel",
     "prepublish": "npm run babel",
     "pre_test": "npm run lint && npm run build"
   },
