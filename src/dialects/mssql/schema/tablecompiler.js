@@ -5,7 +5,6 @@
 import inherits from 'inherits';
 import TableCompiler from '../../../schema/tablecompiler';
 import * as helpers from '../../../helpers';
-import Promise from 'bluebird';
 
 import { assign } from 'lodash'
 
@@ -71,35 +70,6 @@ assign(TableCompiler_MSSQL.prototype, {
   // Renames a column on the table.
   renameColumn (from, to) {
     this.pushQuery(`exec sp_rename ${this.formatter.parameter(this.tableName() + '.' + from)}, ${this.formatter.parameter(to)}, 'COLUMN'`);
-  },
-
-  dropFKRefs (runner, refs) {
-    const formatter = this.client.formatter(this.tableBuilder);
-    return Promise.all(refs.map(function (ref) {
-      const constraintName = formatter.wrap(ref.CONSTRAINT_NAME);
-      const tableName = formatter.wrap(ref.TABLE_NAME);
-      return runner.query({
-        sql: `ALTER TABLE ${tableName} DROP CONSTRAINT ${constraintName}`
-      });
-    }));
-  },
-  createFKRefs (runner, refs) {
-    const formatter = this.client.formatter(this.tableBuilder);
-
-    return Promise.all(refs.map(function (ref) {
-      const tableName = formatter.wrap(ref.TABLE_NAME);
-      const keyName = formatter.wrap(ref.CONSTRAINT_NAME);
-      const column = formatter.columnize(ref.COLUMN_NAME);
-      const references = formatter.columnize(ref.REFERENCED_COLUMN_NAME);
-      const inTable = formatter.wrap(ref.REFERENCED_TABLE_NAME);
-      const onUpdate = ` ON UPDATE ${ref.UPDATE_RULE}`;
-      const onDelete = ` ON DELETE ${ref.DELETE_RULE}`;
-
-      return runner.query({
-        sql: `ALTER TABLE ${tableName} ADD CONSTRAINT ${keyName}` +
-        ' FOREIGN KEY (' + column + ') REFERENCES ' + inTable + ' (' + references + ')' + onUpdate + onDelete
-      });
-    }));
   },
 
   index (columns, indexName) {

@@ -3,7 +3,6 @@ import inherits from 'inherits';
 import { EventEmitter } from 'events';
 import { each, toArray } from 'lodash'
 import { addQueryContext } from '../helpers';
-import saveAsyncStack from '../util/save-async-stack';
 
 // Constructor for the builder instance, typically called from
 // `knex.builder`, accepting the current `knex` instance,
@@ -15,10 +14,10 @@ function SchemaBuilder(client) {
 
   if (client.config) {
     this._debug = client.config.debug
-    saveAsyncStack(this, 4)
   }
 
 }
+
 inherits(SchemaBuilder, EventEmitter)
 
 // Each of the schema builder methods just add to the

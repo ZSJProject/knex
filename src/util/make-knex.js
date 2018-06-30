@@ -1,12 +1,6 @@
 
-import { EventEmitter } from 'events';
-
-import Migrator from '../migrate';
-import Seeder from '../seed';
-import FunctionHelper from '../functionhelper';
 import QueryInterface from '../query/methods';
 import { assign } from 'lodash'
-import batchInsert from './batchInsert';
 
 export default function makeKnex(client) {
 
@@ -20,9 +14,6 @@ export default function makeKnex(client) {
   }
 
   assign(knex, {
-
-    Promise: require('bluebird'),
-
     // A new query builder instance.
     queryBuilder() {
       return client.queryBuilder()
@@ -32,37 +23,11 @@ export default function makeKnex(client) {
       return client.raw.apply(client, arguments)
     },
 
-    batchInsert(table, batch, chunkSize = 1000) {
-      return batchInsert(this, table, batch, chunkSize);
-    },
-
-    // Runs a new transaction, taking a container and returning a promise
-    // for when the transaction is resolved.
-    transaction(container, config) {
-      return client.transaction(container, config)
-    },
-
-    // Typically never needed, initializes the pool for a knex client.
-    initialize(config) {
-      return client.initialize(config)
-    },
-
-    // Convenience method for tearing down the pool.
-    destroy(callback) {
-      return client.destroy(callback)
-    },
-
     ref(ref) {
       return client.ref(ref);
     }
 
   })
-
-  // Hook up the "knex" object as an EventEmitter.
-  const ee = new EventEmitter()
-  for (const key in ee) {
-    knex[key] = ee[key]
-  }
 
   // Allow chaining methods from the root object, before
   // any other information is specified.
@@ -103,40 +68,8 @@ export default function makeKnex(client) {
       get() {
         return client.schemaBuilder()
       }
-    },
-
-    migrate: {
-      get() {
-        return new Migrator(knex)
-      }
-    },
-
-    seed: {
-      get() {
-        return new Seeder(knex)
-      }
-    },
-
-    fn: {
-      get() {
-        return new FunctionHelper(client)
-      }
     }
 
-  })
-
-  // Passthrough all "start" and "query" events to the knex object.
-  client.on('start', function(obj) {
-    knex.emit('start', obj)
-  })
-  client.on('query', function(obj) {
-    knex.emit('query', obj)
-  })
-  client.on('query-error', function(err, obj) {
-    knex.emit('query-error', err, obj)
-  })
-  client.on('query-response', function(response, obj, builder) {
-    knex.emit('query-response', response, obj, builder)
   })
 
   client.makeKnex = makeKnex

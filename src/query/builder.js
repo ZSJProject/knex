@@ -12,8 +12,6 @@ import {
   assign, clone, each, isBoolean, isEmpty, isFunction, isNumber, isObject,
   isString, isUndefined, tail, toArray, reject, includes
 } from 'lodash';
-import saveAsyncStack from '../util/save-async-stack';
-
 // Typically called from `knex.builder`,
 // start a new query building chain.
 function Builder(client) {
@@ -23,7 +21,6 @@ function Builder(client) {
   this._statements = [];
   this._method = 'select'
   if (client.config) {
-    saveAsyncStack(this, 5)
     this._debug = client.config.debug;
   }
   // Internal flags used in the builder.

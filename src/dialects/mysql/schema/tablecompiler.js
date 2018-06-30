@@ -4,7 +4,6 @@
 // -------
 import inherits from 'inherits';
 import TableCompiler from '../../../schema/tablecompiler';
-import Promise from 'bluebird';
 
 import { assign } from 'lodash'
 
@@ -62,100 +61,6 @@ assign(TableCompiler_MySQL.prototype, {
     // alter table + table + ' modify ' + wrapped + '// type';
   },
 
-  // Renames a column on the table.
-  renameColumn(from, to) {
-    const compiler = this;
-    const table = this.tableName();
-    const wrapped = this.formatter.wrap(from) + ' ' + this.formatter.wrap(to);
-
-    this.pushQuery({
-      sql: `show fields from ${table} where field = ` +
-        this.formatter.parameter(from),
-      output(resp) {
-        const column = resp[0];
-        const runner = this;
-        return compiler.getFKRefs(runner).get(0)
-          .then(refs =>
-            Promise.try(function () {
-              if (!refs.length) { return; }
-              return compiler.dropFKRefs(runner, refs);
-            }).then(function () {
-              let sql = `alter table ${table} change ${wrapped} ${column.Type}`;
-
-              if(String(column.Null).toUpperCase() !== 'YES') {
-                sql += ` NOT NULL`
-              }
-              if(column.Default !== void 0 && column.Default !== null) {
-                sql += ` DEFAULT '${column.Default}'`
-              }
-
-              return runner.query({
-                sql
-              });
-            }).then(function () {
-              if (!refs.length) { return; }
-              return compiler.createFKRefs(runner, refs.map(function (ref) {
-                if (ref.REFERENCED_COLUMN_NAME === from) {
-                  ref.REFERENCED_COLUMN_NAME = to;
-                }
-                if (ref.COLUMN_NAME === from) {
-                  ref.COLUMN_NAME = to;
-                }
-                return ref;
-              }));
-            })
-          );
-      }
-    });
-  },
-
-  getFKRefs (runner) {
-    const formatter = this.client.formatter(this.tableBuilder);
-    const sql = 'SELECT KCU.CONSTRAINT_NAME, KCU.TABLE_NAME, KCU.COLUMN_NAME, '+
-              '       KCU.REFERENCED_TABLE_NAME, KCU.REFERENCED_COLUMN_NAME, '+
-              '       RC.UPDATE_RULE, RC.DELETE_RULE '+
-              'FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KCU '+
-              'JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS RC '+
-              '       USING(CONSTRAINT_NAME)' +
-              'WHERE KCU.REFERENCED_TABLE_NAME = ' + formatter.parameter(this.tableNameRaw) + ' '+
-              '  AND KCU.CONSTRAINT_SCHEMA = ' + formatter.parameter(this.client.database()) + ' '+
-              '  AND RC.CONSTRAINT_SCHEMA = ' + formatter.parameter(this.client.database());
-
-    return runner.query({
-      sql,
-      bindings: formatter.bindings
-    });
-  },
-
-  dropFKRefs (runner, refs) {
-    const formatter = this.client.formatter(this.tableBuilder);
-
-    return Promise.all(refs.map(function (ref) {
-      const constraintName = formatter.wrap(ref.CONSTRAINT_NAME);
-      const tableName = formatter.wrap(ref.TABLE_NAME);
-      return runner.query({
-        sql: `alter table ${tableName} drop foreign key ${constraintName}`
-      });
-    }));
-  },
-  createFKRefs (runner, refs) {
-    const formatter = this.client.formatter(this.tableBuilder);
-
-    return Promise.all(refs.map(function (ref) {
-      const tableName = formatter.wrap(ref.TABLE_NAME);
-      const keyName = formatter.wrap(ref.CONSTRAINT_NAME);
-      const column = formatter.columnize(ref.COLUMN_NAME);
-      const references = formatter.columnize(ref.REFERENCED_COLUMN_NAME);
-      const inTable = formatter.wrap(ref.REFERENCED_TABLE_NAME);
-      const onUpdate = ` ON UPDATE ${ref.UPDATE_RULE}`;
-      const onDelete = ` ON DELETE ${ref.DELETE_RULE}`;
-
-      return runner.query({
-        sql: `alter table ${tableName} add constraint ${keyName} ` +
-          'foreign key (' + column + ') references ' + inTable + ' (' + references + ')' + onUpdate + onDelete
-      });
-    }));
-  },
   index(columns, indexName) {
     indexName = indexName ? this.formatter.wrap(indexName) : this._indexCommand('index', this.tableNameRaw, columns);
     this.pushQuery(`alter table ${this.tableName()} add index ${indexName}(${this.formatter.columnize(columns)})`);

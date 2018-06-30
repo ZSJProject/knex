@@ -3,9 +3,8 @@
 // -------
 import inherits from 'inherits';
 import Client_PG from '../postgres';
-import { assign, map, } from 'lodash'
+import { assign, } from 'lodash'
 
-import Transaction from './transaction';
 import QueryCompiler from './query/compiler';
 import ColumnBuilder from './schema/columnbuilder';
 import ColumnCompiler from './schema/columncompiler';
@@ -18,10 +17,6 @@ function Client_Redshift(config) {
 inherits(Client_Redshift, Client_PG)
 
 assign(Client_Redshift.prototype, {
-  transaction() {
-    return new Transaction(this, ...arguments)
-  },
-
   queryCompiler() {
     return new QueryCompiler(this, ...arguments)
   },
@@ -44,31 +39,7 @@ assign(Client_Redshift.prototype, {
   
   dialect: 'redshift',
 
-  driverName: 'pg-redshift',
-
-  _driver() {
-    return require('pg')
-  },
-
-  // Ensures the response is returned in the same format as other clients.
-  processResponse(obj, runner) {
-    const resp = obj.response;
-    if (obj.output) return obj.output.call(runner, resp);
-    if (obj.method === 'raw') return resp;
-    if (resp.command === 'SELECT') {
-      if (obj.method === 'first') return resp.rows[0];
-      if (obj.method === 'pluck') return map(resp.rows, obj.pluck);
-      return resp.rows;
-    }
-    if (
-      resp.command === 'INSERT' ||
-      resp.command === 'UPDATE' ||
-      resp.command === 'DELETE'
-    ) {
-      return resp.rowCount;
-    }
-    return resp;
-  }
+  driverName: 'pg-redshift'
 })
 
 export default Client_Redshift;

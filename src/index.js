@@ -1,11 +1,7 @@
 
-import Raw from './raw';
 import Client from './client';
-
+import Raw from './raw';
 import makeKnex from './util/make-knex';
-import parseConnection from './util/parse-connection';
-
-import { assign } from 'lodash'
 
 // The client names we'll allow in the `{name: lib}` pairing.
 const aliases = {
@@ -17,26 +13,16 @@ const aliases = {
 };
 
 export default function Knex(config) {
-  if (typeof config === 'string') {
-    return new Knex(assign(parseConnection(config), arguments[2]))
-  }
   let Dialect;
-  if (arguments.length === 0 || (!config.client && !config.dialect)) {
-    Dialect = Client
-  } else if (typeof config.client === 'function' && config.client.prototype instanceof Client) {
-    Dialect = config.client
-  } else {
-    const clientName = config.client || config.dialect;
-    Dialect = require(`./dialects/${aliases[clientName] || clientName}/index.js`)
-  }
-  if (typeof config.connection === 'string') {
-    config = assign({}, config, {connection: parseConnection(config.connection).connection})
-  }
-  return makeKnex(new Dialect(config))
-}
+  const clientName = config.client || config.dialect;
 
-// Expose Client on the main Knex namespace.
-Knex.Client = Client;
+  if(clientName){
+    Dialect = require(`./dialects/${aliases[clientName] || clientName}/index.js`);
+  }
+
+  if(Dialect) return makeKnex(new Dialect(config));
+  else return makeKnex(new Client());
+}
 
 /* eslint no-console:0 */
 
@@ -49,14 +35,10 @@ Object.defineProperties(Knex, {
       );
       return '0.12.6'
     }
-  },
-  Promise: {
-    get() {
-      console.warn(`Knex.Promise is deprecated, either require bluebird or use the global Promise`)
-      return require('bluebird')
-    }
   }
 });
+
+Knex.Client = Client;
 
 // Run a "raw" query, though we can't do anything with it other than put
 // it in a query statement.
