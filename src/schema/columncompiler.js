@@ -21,6 +21,8 @@ function ColumnCompiler(client, tableCompiler, columnBuilder) {
   this.modifiers = [];
 }
 
+const functionRegexp = /\w+\(\)/;
+
 ColumnCompiler.prototype.pushQuery = helpers.pushQuery
 
 ColumnCompiler.prototype.pushAdditional = helpers.pushAdditional
@@ -148,9 +150,10 @@ ColumnCompiler.prototype.defaultTo = function(value) {
     value = `'${value ? 1 : 0}'`;
   } else if (this.type === 'json' && isObject(value)) {
     return JSON.stringify(value);
-  } else {
+  } else if (!functionRegexp.test(value)){
     value = `'${value}'`;
   }
+
   return `default ${value}`;
 };
 ColumnCompiler.prototype._num = function(val, fallback) {
